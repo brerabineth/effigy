@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet: ['10.0.x']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Build
+        run: dotnet build -c Release
+      - name: Selftest
+        run: dotnet run -c Release --no-build -- selftest
+      - name: E2E
+        run: bash scripts/e2e.sh
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build
+        run: dotnet build -c Release
+      - name: Selftest
+        run: dotnet run -c Release --no-build -- selftest
+      - name: E2E
+        run: bash scripts/e2e.sh
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build
+        run: dotnet build -c Release
+      - name: Selftest
+        run: dotnet run -c Release --no-build -- selftest
+      - name: Forge and scan smoke
+        shell: bash
+        run: |
+          dotnet run -c Release --no-build -- forge fixtures-smoke
+          dotnet run -c Release --no-build -- scan fixtures-smoke --json --quiet > smoke.json || true
+          python -c "import json;d=json.load(open('smoke.json'));assert d['files']==10;print('smoke ok',d['verdict'])"
+      - name: Trimmed publish smoke (win-x64)
+        run: |
+          dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true -o pub-smoke
+          ./pub-smoke/effigy.exe selftest

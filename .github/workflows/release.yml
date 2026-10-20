@@ -1,0 +1,35 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Selftest gate
+        run: dotnet run -c Release -- selftest
+      - name: Build release assets
+        run: bash scripts/build_release.sh dist
+      - name: Smoke test linux asset
+        run: |
+          BIN=$(ls dist/effigy-*linux-x64)
+          "$BIN" selftest
+          "$BIN" forge /tmp/fx >/dev/null
+          "$BIN" scan /tmp/fx --json --quiet > /tmp/out.json || true
+          python3 -c "import json;d=json.load(open('/tmp/out.json'));assert d['files']==10;print('asset ok',d['verdict'])"
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/SHA256SUMS
+            dist/effigy-*
+          generate_release_notes: true
