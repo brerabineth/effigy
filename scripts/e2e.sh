@@ -101,9 +101,9 @@ cmp -s "$WORK/out/dir.json" "$WORK/out/dir2.json" && ok || bad "scan idempotent 
 
 # ---------- markdown + terminal ----------
 ( cd "$WORK" && $DEV scan fx/dropper-encoded.lnk --md --quiet > "out/r.md" ) 2>/dev/null
-rg -q "^\| severity \| id \| weight \| detail \|" "$WORK/out/r.md" && rg -q "args.decoded.lolbin" "$WORK/out/r.md" && ok || bad "md table + finding id"
+grep -q "^| severity | id | weight | detail |" "$WORK/out/r.md" && grep -q "args.decoded.lolbin" "$WORK/out/r.md" && ok || bad "md table + finding id"
 ( cd "$WORK" && $DEV scan fx/dropper-encoded.lnk --quiet > "out/t.txt" ) 2>/dev/null
-rg -q "HOSTILE" "$WORK/out/t.txt" && rg -q "args.decoded.lolbin" "$WORK/out/t.txt" && ok || bad "terminal card content"
+grep -q "HOSTILE" "$WORK/out/t.txt" && grep -q "args.decoded.lolbin" "$WORK/out/t.txt" && ok || bad "terminal card content"
 
 # ---------- stdin ----------
 cat "$WORK/fx/dropper-remote.lnk" | $DEV scan - --json --quiet > "$WORK/out/stdin.json" 2>/dev/null
@@ -135,11 +135,11 @@ assert all(r['weight'] > 0 for r in rules), 'bad weight'
 
 # ---------- show ----------
 $DEV show "$WORK/fx/dropper-encoded.lnk" > "$WORK/out/show.txt" 2>/dev/null
-rg -q "5e4c1a77-3f2b-4a1d-9c0e-1b2a3c4d5e6f" "$WORK/out/show.txt" && rg -q "tracker" "$WORK/out/show.txt" && ok || bad "show exposes tracker droids"
+grep -q "5e4c1a77-3f2b-4a1d-9c0e-1b2a3c4d5e6f" "$WORK/out/show.txt" && grep -q "tracker" "$WORK/out/show.txt" && ok || bad "show exposes tracker droids"
 $DEV show "$WORK/fx/stomped.lnk" > "$WORK/out/show2.txt" 2>/dev/null
-rg -q "environment-variable" "$WORK/out/show2.txt" && ok || bad "show lists environment block"
+grep -q "environment-variable" "$WORK/out/show2.txt" && ok || bad "show lists environment block"
 $DEV show "$WORK/fx/xor-decoder.lnk" > "$WORK/out/show3.txt" 2>/dev/null
-rg -q "overlay" "$WORK/out/show3.txt" && ok || bad "show lists overlay"
+grep -q "overlay" "$WORK/out/show3.txt" && ok || bad "show lists overlay"
 
 # ---------- no-color ----------
 NO_COLOR=1 $DEV scan "$WORK/fx/dropper-remote.lnk" --quiet > "$WORK/out/nc.txt" 2>/dev/null
@@ -155,7 +155,7 @@ for f in dropper-encoded stomped xor-decoder; do
     ERR=$(cd "$WORK" && $DEV scan cut.lnk --json --quiet 2>&1 > /dev/null)
     EC=$?
     case "$EC" in 0|1|3|10) ;; *) FUZZ_FAIL=1; echo "    fuzz $f@$off exit $EC: $ERR";; esac
-    echo "$ERR" | rg -q "internal error" && { FUZZ_FAIL=1; echo "    fuzz $f@$off internal error"; } || true
+    echo "$ERR" | grep -q "internal error" && { FUZZ_FAIL=1; echo "    fuzz $f@$off internal error"; } || true
   done
 done
 [ "$FUZZ_FAIL" = "0" ] && ok || bad "truncation fuzz (36+ cuts, structured verdicts only)"
@@ -181,7 +181,7 @@ fi
 
 # ---------- path / AI hygiene ----------
 ( cd "$WORK" && $DEV scan fx --md --quiet; $DEV scan fx --quiet; $DEV rules ) > "$WORK/out/hygiene.txt" 2>&1
-( rg -q "/home/" "$WORK/out/hygiene.txt" || rg -qi "claude|openai|assistant|language model" "$WORK/out/hygiene.txt" ) && bad "hygiene: host path or AI marker in output" || ok
+( grep -q "/home/" "$WORK/out/hygiene.txt" || grep -qiE "claude|openai|assistant|language model" "$WORK/out/hygiene.txt" ) && bad "hygiene: host path or AI marker in output" || ok
 
 echo "== e2e: $PASS passed, $FAIL failed =="
 [ "$FAIL" = "0" ] && exit 0 || exit 1
