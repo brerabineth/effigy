@@ -2,7 +2,7 @@
 # Release asset build: trimmed self-contained single-file binaries + SHA256SUMS.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-VERSION=$(rg -o '<Version>([^<]+)</Version>' effigy.csproj -r '$1')
+VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' effigy.csproj)
 OUT="${1:-dist/$VERSION}"
 mkdir -p "$OUT"
 for rid in linux-x64 linux-arm64 osx-arm64 win-x64; do
